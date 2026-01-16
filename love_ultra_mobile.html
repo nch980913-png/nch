@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>月月小姨 · Love Storm</title>
+<style>
+html,body{
+    margin:0;
+    padding:0;
+    background:#000;
+    overflow:hidden;
+    touch-action:none;
+}
+canvas{display:block;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d",{ alpha:true });
+
+function resize(){
+    canvas.width = innerWidth * devicePixelRatio;
+    canvas.height = innerHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+addEventListener("resize", resize);
+resize();
+
+const cx = ()=>innerWidth/2;
+const cy = ()=>innerHeight/2;
+
+// ============ 爱心 ============
+function heart(x,y,s,a){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.scale(s,s);
+    ctx.globalAlpha=a;
+    ctx.shadowColor="#ff2d55";
+    ctx.shadowBlur=70;
+
+    const g=ctx.createRadialGradient(0,-6,2,0,0,45);
+    g.addColorStop(0,"#ffe6ee");
+    g.addColorStop(.4,"#ff2d55");
+    g.addColorStop(1,"#520000");
+
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.moveTo(0,16);
+    ctx.bezierCurveTo(-28,-18,-68,18,0,74);
+    ctx.bezierCurveTo(68,18,28,-18,0,16);
+    ctx.fill();
+    ctx.restore();
+}
+
+// ============ 写实花瓣 ============
+function petal(x,y,s,r,c){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(r);
+    ctx.scale(s,s);
+    ctx.shadowColor=c;
+    ctx.shadowBlur=30;
+
+    const g=ctx.createLinearGradient(-10,-30,10,30);
+    g.addColorStop(0,"#fff");
+    g.addColorStop(.4,c);
+    g.addColorStop(1,"#3b0000");
+
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.moveTo(0,-28);
+    ctx.bezierCurveTo(20,-12,22,22,0,40);
+    ctx.bezierCurveTo(-22,22,-20,-12,0,-28);
+    ctx.fill();
+    ctx.restore();
+}
+
+class Petal{
+    constructor(){ this.reset(); }
+    reset(){
+        this.x=Math.random()*innerWidth;
+        this.y=-120;
+        this.z=Math.random()*2+0.6;
+        this.v=Math.random()*6+4;
+        this.r=Math.random()*Math.PI*2;
+        this.s=Math.random()*1+0.6;
+        this.spin=Math.random()*0.2-0.1;
+        this.c=["#ff2d55","#ff8fab","#c77dff","#4cc9f0","#ffd166"][Math.random()*5|0];
+    }
+    u(){
+        this.y+=this.v*this.z;
+        this.x+=Math.sin(this.y*0.03)*3;
+        this.r+=this.spin;
+        if(this.y>innerHeight+160) this.reset();
+    }
+    d(){ petal(this.x,this.y,this.s*this.z,this.r,this.c); }
+}
+
+class Burst{
+    constructor(){
+        this.a=Math.random()*Math.PI*2;
+        this.r=0;
+        this.v=Math.random()*18+14;
+        this.l=1;
+        this.spin=Math.random()*0.4-0.2;
+    }
+    u(){ this.r+=this.v; this.l-=0.035; this.a+=this.spin; }
+    d(){ heart(cx()+Math.cos(this.a)*this.r, cy()+Math.sin(this.a)*this.r, .55, this.l); }
+}
+
+let t=0;
+let bursts=[];
+const petals=Array.from({length:120},()=>new Petal());
+
+// ============ 主循环 ============
+function loop(){
+    // HDR + Bloom 残影（不清屏）
+    ctx.fillStyle="rgba(0,0,0,0.16)";
+    ctx.fillRect(0,0,innerWidth,innerHeight);
+
+    // 核心能量心跳（更快）
+    const beat=1+Math.sin(t)*.3+Math.sin(t*3.5)*.2;
+    heart(cx(),cy(),7.8*beat,1);
+
+    // 文本
+    ctx.save();
+    ctx.font="bold 48px system-ui";
+    ctx.textAlign="center";
+    ctx.fillStyle="#ffe3ed";
+    ctx.shadowColor="#ff2d55";
+    ctx.shadowBlur=40;
+    ctx.fillText("月月小姨",cx(),cy()+180);
+    ctx.restore();
+
+    // 连续爆裂（永不停）
+    for(let i=0;i<10;i++) bursts.push(new Burst());
+    bursts=bursts.filter(b=>b.l>0);
+    bursts.forEach(b=>{b.u();b.d();});
+
+    // 花瓣风暴
+    petals.forEach(p=>{p.u();p.d();});
+
+    t+=0.07;
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
