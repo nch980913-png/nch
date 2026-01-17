@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>致月月小姨 - 永恒星海与玫瑰风暴</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #canvasStar { z-index: 1; }
+        #canvasHeart { z-index: 2; }
+        #canvasPetal { z-index: 3; }
+        
+        .text {
+            position: absolute;
+            width: 100%;
+            top: 50%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            text-align: center;
+            font-family: "Microsoft YaHei", sans-serif;
+            font-size: 56px;
+            font-weight: 900;
+            letter-spacing: 12px;
+            pointer-events: none;
+            z-index: 99;
+            animation: heartbeat 1.5s infinite ease-in-out;
+            text-shadow: 0 0 20px rgba(0, 168, 255, 0.9), 0 0 40px rgba(0, 255, 255, 0.7);
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+            15% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+            30% { transform: translate(-50%, -50%) scale(1); opacity: 0.95; }
+            45% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="text">月月小姨</div>
+    <canvas id="canvasStar"></canvas>
+    <canvas id="canvasHeart"></canvas>
+    <canvas id="canvasPetal"></canvas>
+
+    <script>
+        const starCanvas = document.getElementById('canvasStar');
+        const heartCanvas = document.getElementById('canvasHeart');
+        const petalCanvas = document.getElementById('canvasPetal');
+        const sCtx = starCanvas.getContext('2d');
+        const hCtx = heartCanvas.getContext('2d');
+        const pCtx = petalCanvas.getContext('2d');
+
+        let width, height;
+        let time = 0;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            [starCanvas, heartCanvas, petalCanvas].forEach(c => {
+                c.width = width;
+                c.height = height;
+            });
+            initStars();
+        }
+
+        // ==========================================
+        // 1. 史诗星海背景 (保持不变)
+        // ==========================================
+        const stars = [];
+        function initStars() {
+            stars.length = 0;
+            for (let i = 0; i < 700; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    r: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.02 + 0.005,
+                    color: Math.random() > 0.7 ? '#d0e0ff' : (Math.random() > 0.8 ? '#ffe0f0' : '#ffffff')
+                });
+            }
+        }
+
+        function drawBackground() {
+            sCtx.clearRect(0, 0, width, height);
+            const grad = sCtx.createRadialGradient(width/2, height*0.6, 0, width/2, height/2, width);
+            grad.addColorStop(0, '#15082d'); grad.addColorStop(0.5, '#04061a'); grad.addColorStop(1, '#000000');
+            sCtx.fillStyle = grad; sCtx.fillRect(0, 0, width, height);
+            sCtx.globalCompositeOperation = 'lighter';
+            drawNebula(width*0.3, height*0.3, width*0.5, 'rgba(100, 0, 200, 0.12)');
+            drawNebula(width*0.7, height*0.7, width*0.6, 'rgba(0, 80, 200, 0.1)');
+            drawNebula(width*0.5, height*0.9, width*0.5, 'rgba(200, 0, 100, 0.08)');
+            stars.forEach(s => {
+                s.alpha += s.speed; if (s.alpha > 1 || s.alpha < 0) s.speed = -s.speed;
+                sCtx.globalAlpha = Math.pow(Math.max(0, s.alpha), 2); sCtx.fillStyle = s.color;
+                sCtx.beginPath(); sCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2); sCtx.fill();
+            });
+            sCtx.globalAlpha = 1; sCtx.globalCompositeOperation = 'source-over';
+        }
+        function drawNebula(x, y, r, color) {
+            const g = sCtx.createRadialGradient(x, y, 0, x, y, r);
+            g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+            sCtx.fillStyle = g; sCtx.fillRect(0, 0, width, height);
+        }
+
+        // ==========================================
+        // 2. 核心：巨大爱心、底托与射线系统 (保持不变)
+        // ==========================================
+        const heartParticles = [];
+        const baseParticles = [];
+        const rayParticles = [];
+        const heartSettings = { density: 5500, duration: 2.5 };
+
+        function getHeartPoint(t) {
+            return {
+                x: 240 * Math.pow(Math.sin(t), 3),
+                y: -(200 * Math.cos(t) - 70 * Math.cos(2*t) - 30 * Math.cos(3*t) - 15 * Math.cos(4*t)) + 40
+            };
+        }
+
+        function drawHeartCore(dt) {
+            hCtx.clearRect(0, 0, width, height);
+            hCtx.save();
+            hCtx.translate(width / 2, height / 2);
+            const rot = Math.cos(time * 1.2);
+            hCtx.scale(rot, 1);
+            hCtx.globalCompositeOperation = 'lighter';
+
+            for(let i=0; i<12; i++) {
+                baseParticles.push({
+                    x: (Math.random() - 0.5) * width * 0.3, y: height * 0.45,
+                    vx: (Math.random() - 0.5) * 10, vy: -Math.random() * 90 - 70,
+                    life: 1, decay: 0.01 + Math.random() * 0.015, size: Math.random() * 3 + 1
+                });
+            }
+            for(let i = baseParticles.length - 1; i >= 0; i--) {
+                const b = baseParticles[i];
+                b.vx -= b.x * 0.005; b.x += b.vx; b.y += b.vy * dt; b.life -= b.decay;
+                if(b.life <= 0) { baseParticles.splice(i, 1); continue; }
+                hCtx.fillStyle = `hsla(200, 100%, 70%, ${b.life * 0.6})`;
+                hCtx.beginPath(); hCtx.arc(b.x, b.y, b.size, 0, Math.PI * 2); hCtx.fill();
+            }
+
+            const rayBrightness = (Math.sin(time * 3) + 1) / 2 * 0.5 + 0.5;
+            
+            for(let i=0; i<8; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const p = getHeartPoint(t);
+                const len = Math.sqrt(p.x*p.x + p.y*p.y);
+                const dirX = p.x / len; const dirY = p.y / len;
+                rayParticles.push({
+                    x: p.x, y: p.y,
+                    vx: dirX * (Math.random() * 150 + 100),
+                    vy: dirY * (Math.random() * 150 + 100),
+                    life: 1, decay: Math.random() * 0.04 + 0.02,
+                    size: Math.random() * 1.5 + 0.5
+                });
+            }
+            
+            hCtx.shadowBlur = 15;
+            hCtx.shadowColor = 'rgba(180, 220, 255, 0.8)';
+            for(let i = rayParticles.length - 1; i >= 0; i--) {
+                const r = rayParticles[i];
+                r.x += r.vx * dt; r.y += r.vy * dt; r.life -= r.decay;
+                if(r.life <= 0) { rayParticles.splice(i, 1); continue; }
+                const alpha = r.life * rayBrightness * 0.8;
+                hCtx.strokeStyle = `rgba(200, 240, 255, ${alpha})`;
+                hCtx.lineWidth = r.size;
+                hCtx.beginPath();
+                hCtx.moveTo(r.x, r.y);
+                hCtx.lineTo(r.x - r.vx * 0.02, r.y - r.vy * 0.02);
+                hCtx.stroke();
+            }
+            hCtx.shadowBlur = 0;
+
+            const count = heartSettings.density * dt / heartSettings.duration;
+            for(let i=0; i<count; i++) {
+                const t = Math.random() * Math.PI * 2;
+                const p = getHeartPoint(t);
+                heartParticles.push({
+                    x: p.x, y: p.y,
+                    vx: p.x / 120 * (Math.random() + 0.5), vy: p.y / 120 * (Math.random() + 0.5),
+                    age: 0, size: Math.random() * 2.5 + 0.8
+                });
+            }
+            heartParticles.forEach((p, i) => {
+                p.x += p.vx * dt * 20; p.y += p.vy * dt * 20; p.age += dt;
+                if(p.age > heartSettings.duration) { heartParticles.splice(i, 1); return; }
+                const alpha = 1 - (p.age / heartSettings.duration);
+                hCtx.fillStyle = `hsla(${190 + p.y/15}, 100%, 75%, ${alpha})`;
+                hCtx.beginPath(); hCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2); hCtx.fill();
+            });
+
+            hCtx.restore();
+        }
+
+        // ==========================================
+        // 3. 写实玫瑰花瓣系统 (高速高密度版)
+        // ==========================================
+        const petals = [];
+        function createPetalPath(ctx, size) {
+            ctx.beginPath(); ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(size/2, -size/2, size, size/4, 0, size);
+            ctx.bezierCurveTo(-size, size/4, -size/2, -size/2, 0, 0); ctx.closePath();
+        }
+        function drawPetalSystem(dt) {
+            pCtx.clearRect(0, 0, width, height);
+            // 【修改点1】最大数量提升至 450，生成概率提升至 0.7 (高密度)
+            if (petals.length < 450 && Math.random() < 0.7) {
+                petals.push({
+                    x: Math.random() * width, y: -50, size: Math.random() * 30 + 10,
+                    // 【修改点2】下落速度显著提升 (范围 5-10)
+                    speedY: Math.random() * 5 + 5, 
+                    sway: Math.random() * 3,
+                    rot: Math.random() * Math.PI * 2, rotS: (Math.random() - 0.5) * 0.08,
+                    flip: Math.random() * Math.PI, flipS: Math.random() * 0.05 + 0.02,
+                    color: `rgb(${160 + Math.random() * 90}, 0, ${40 + Math.random() * 60})`
+                });
+            }
+            petals.forEach((p, i) => {
+                p.y += p.speedY; p.x += Math.sin(time * 0.8 + p.x) * p.sway;
+                p.rot += p.rotS; p.flip += p.flipS;
+                if (p.y > height + 50) { petals.splice(i, 1); return; }
+                pCtx.save(); pCtx.translate(p.x, p.y); pCtx.rotate(p.rot);
+                pCtx.scale(Math.sin(p.flip), Math.cos(p.flip * 0.6));
+                const grad = pCtx.createRadialGradient(0, 0, 0, 0, 0, p.size);
+                grad.addColorStop(0, p.color); grad.addColorStop(0.9, 'rgba(0,0,0,0.6)');
+                pCtx.fillStyle = grad; pCtx.shadowColor = 'rgba(255, 50, 50, 0.6)'; pCtx.shadowBlur = 15;
+                createPetalPath(pCtx, p.size); pCtx.fill(); pCtx.restore();
+            });
+        }
+
+        // ==========================================
+        // 核心渲染循环
+        // ==========================================
+        function loop() {
+            const now = Date.now() / 1000;
+            const dt = time ? Math.min(now - time, 0.1) : 0.016;
+            time = now;
+            drawBackground(); drawHeartCore(dt); drawPetalSystem(dt);
+            requestAnimationFrame(loop);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        loop();
+    </script>
+</body>
+</html>
